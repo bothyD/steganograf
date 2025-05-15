@@ -194,7 +194,7 @@ class Analyser(QtCore.QThread):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    __WINDOW_TITLE = "Stegonometry Task 5"
+    __WINDOW_TITLE = "Stegonometry LAB 5"
 
     def __init__(self):
         super().__init__()
@@ -222,11 +222,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def save_results_event():
             folder_path = pathlib.Path(
-                f"./out/{
-                    re.sub(
-                        ' ', '_', re.sub('[:\\.]', '-', str(datetime.datetime.now()))
-                    )
-                }"
+                f"./out/{re.sub(' ', '_', re.sub('[:.]', '-', str(datetime.datetime.now())))}"
             )
             folder_path.mkdir(parents=True, exist_ok=True)
             if self.__save_source_images_action.isChecked():
@@ -263,8 +259,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
             for index, result in enumerate(results):
                 result_text += (
-                    f"\tImage {index}: {'contains' if result else "doesn't contain"}\n"
+                    f'\tImage {index}: {"contains" if result else "doesnt contain"}\n'
                 )
+
 
             self.__result_text_browser.append(result_text)
 
@@ -287,7 +284,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             for index, result in enumerate(results):
                 result_text += (
-                    f"\tImage {index}: {'contains' if result else "doesn't contain"}\n"
+                    f"\tImage {index}: {'contains' if result else 'doesnt contain'}\n"
                 )
 
             self.__result_text_browser.append(result_text)
@@ -303,7 +300,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for index, result in enumerate(results):
                 result_text += (
                     # f"\tImage {index}: {result}\n"
-                    f"\tImage {index}: {'contains' if result else "doesn't contain"}\n"
+                    f"\tImage {index}: {'contains' if result else 'doesnt contain'}\n"
                 )
 
             self.__result_text_browser.append(result_text)

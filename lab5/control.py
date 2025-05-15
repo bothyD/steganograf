@@ -267,7 +267,7 @@ class RSAnalysis:
         results[27] = ((imgx * imgy * 3) * ml) / 8
         print(ml)
 
-        return ml > 0.05
+        return ml > 0.001# процент определения сообщения
 
     def __getX(
         self,
