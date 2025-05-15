@@ -30,9 +30,9 @@ class AnalyseWorker(PyQt6.QtCore.QThread):
     finished = PyQt6.QtCore.pyqtSignal(dict)
 
     class Methods(enum.Enum):
-        LSB_SEQ = 0
-        LAB3 = 2
-        LAB4 = 3
+        LSB_PATTERN_MATCHING = 0
+        LSB_SEQUENTIAL = 2
+        LSB_SCALED = 3
 
     def __init__(
         self,
@@ -59,24 +59,24 @@ class AnalyseWorker(PyQt6.QtCore.QThread):
     ):
         if percent > 0:
             match method:
-                case AnalyseWorker.Methods.LSB_SEQ:
+                case AnalyseWorker.Methods.LSB_PATTERN_MATCHING:
                     cap = control.LSBSeq.get_max_capacity(image)
                     return control.LSBSeq.inject_message(
                         image, message[: cap * percent // 100]
                     )
                 
-                case AnalyseWorker.Methods.LAB3:
+                case AnalyseWorker.Methods.LSB_SEQUENTIAL:
                     cap = control.LSBMessage.get_max_capacity(image, message)
                     return control.LSBMessage.inject_message(
                         image, message[: cap * percent // 100]
                     )
-                case AnalyseWorker.Methods.LAB4:
+                case AnalyseWorker.Methods.LSB_SCALED:
                     cap = control.LSBScaledMessage.get_max_capacity(image)
                     return control.LSBScaledMessage.inject_message(
                         control.LSBScaledMessage.scale_image(image),
                         message[: cap * percent // 100],
                     )
-        if method == AnalyseWorker.Methods.LAB4:
+        if method == AnalyseWorker.Methods.LSB_SCALED:
             return control.LSBScaledMessage.scale_image(image)
         return image
 
@@ -146,13 +146,29 @@ class AnalyseWorker(PyQt6.QtCore.QThread):
 
 
 class MainWindow(PyQt6.QtWidgets.QMainWindow):
-    __WINDOW_TITLE = "Stegonometry Task 6"
+    __WINDOW_TITLE = "Steganography Task 6"
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle(self.__WINDOW_TITLE)
         self.populate()
         self.connect_buttons()
+        self.apply_styles()
+
+    def apply_styles(self):
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #F9FBFD;
+            }
+            QTextBrowser {
+                border: 1px solid #CCC;
+                border-radius: 6px;
+                background-color: #FFF;
+                padding: 10px;
+                font-family: Consolas, monospace;
+                font-size: 13px;
+            }
+        """)
 
     def show_progress_indicator(self):
         self.__progress_indicator = PyQt6.QtWidgets.QProgressDialog(self)
@@ -163,7 +179,8 @@ class MainWindow(PyQt6.QtWidgets.QMainWindow):
         self.__progress_indicator.setAttribute(
             PyQt6.QtCore.Qt.WidgetAttribute.WA_DeleteOnClose
         )
-        # self.__buttons_widget.__main_layout.addWidget(self.__progress_indicator)
+        self.__progress_indicator.setWindowTitle("Processing...")
+        self.__progress_indicator.setLabelText("Analyzing images, please wait...")
         self.__progress_indicator.show()
 
     def hide_progress_indicator(self):
@@ -176,14 +193,18 @@ class MainWindow(PyQt6.QtWidgets.QMainWindow):
             paths = PyQt6.QtWidgets.QFileDialog.getOpenFileNames(
                 parent=self, caption="Select images to open", filter="BMP (*.bmp)"
             )[0]
-            if paths is not None:
+            if paths:
                 self.__images_before_widget.images = [PIL.Image.open(x) for x in paths]
 
         def analyze_images_event():
             def worker_finished(out: dict):
                 self.hide_progress_indicator()
-                self.__result_text_browser.setText(str(out))
+                self.__result_text_browser.setText(json.dumps(out, indent=2))
                 control.PlotBuilder.build_plot("Result", out)
+
+            if not self.__images_before_widget.images:
+                PyQt6.QtWidgets.QMessageBox.warning(self, "Warning", "No images loaded!")
+                return
 
             self.show_progress_indicator()
             self.__worker_thread = AnalyseWorker(
@@ -203,34 +224,43 @@ class MainWindow(PyQt6.QtWidgets.QMainWindow):
             self.__worker_thread.start()
 
         def save_results_event():
-            pathlib.Path("out.json").write_text(
-                self.__result_text_browser.toPlainText()
-            )
+            try:
+                pathlib.Path("out.json").write_text(
+                    self.__result_text_browser.toPlainText()
+                )
+                PyQt6.QtWidgets.QMessageBox.information(self, "Success", "Results saved to out.json")
+            except Exception as e:
+                PyQt6.QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save results:\n{e}")
 
         self.__buttons_widget.open_images_button.clicked.connect(open_images_event)
-        self.__buttons_widget.analyze_images_button.clicked.connect(
-            analyze_images_event
-        )
+        self.__buttons_widget.analyze_images_button.clicked.connect(analyze_images_event)
         self.__buttons_widget.save_resuts_button.clicked.connect(save_results_event)
 
     def populate(self):
         self.__central_widget = PyQt6.QtWidgets.QWidget(self)
         self.__main_layout = PyQt6.QtWidgets.QVBoxLayout(self.__central_widget)
+        self.__main_layout.setContentsMargins(15, 15, 15, 15)
+        self.__main_layout.setSpacing(15)
         self.__central_widget.setLayout(self.__main_layout)
         self.setCentralWidget(self.__central_widget)
 
         self.__upper_layout_widget = PyQt6.QtWidgets.QWidget(self)
         self.__upper_layout = PyQt6.QtWidgets.QHBoxLayout(self.__upper_layout_widget)
+        self.__upper_layout.setSpacing(20)
         self.__upper_layout_widget.setLayout(self.__upper_layout)
-        self.__main_layout.addWidget(self.__upper_layout_widget)
+        self.__main_layout.addWidget(self.__upper_layout_widget, stretch=1)
 
         self.__images_before_widget = ImagesWidget(self.__upper_layout_widget)
         self.__buttons_widget = ButtonsWidget(self.__upper_layout_widget)
-        self.__upper_layout.addWidget(self.__images_before_widget)
-        self.__upper_layout.addWidget(self.__buttons_widget)
+        self.__upper_layout.addWidget(self.__images_before_widget, stretch=3)
+        self.__upper_layout.addWidget(self.__buttons_widget, stretch=1)
 
         self.__result_text_browser = PyQt6.QtWidgets.QTextBrowser(self.__central_widget)
+        self.__result_text_browser.setMinimumHeight(150)
         self.__main_layout.addWidget(self.__result_text_browser)
 
+        # Заполнить комбобокс методами с удобочитаемыми названиями
+        self.__buttons_widget.method_dropdown.clear()
         for method in AnalyseWorker.Methods:
-            self.__buttons_widget.method_dropdown.addItem(str(method), method)
+            # Отображать название метода красиво
+            self.__buttons_widget.method_dropdown.addItem(method.name.replace('_', ' ').title(), method)

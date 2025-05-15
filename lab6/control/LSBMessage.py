@@ -61,46 +61,45 @@ class LSBMessage:
     def extract_message(img_in: PIL.Image.Image, message_bit_len: int) -> bitarray:
         pixels_in = img_in.load()
         msg_index = 0
-        message_bits = [0] * message_bit_len
+        message_bits = []
         if pixels_in is None:
             raise BaseException("pixels_in is None")
 
-        def index_in():
-            return msg_index < len(message_bits) - 1
-
         for x in range(img_in.size[0]):
             for y in range(img_in.size[1]):
-                if not index_in():
+                if msg_index >= message_bit_len:
                     break
 
                 byte = pixels_in[x, y]
+
+                # Извлекаем старшие биты (по 2 бита каждый)
                 clp = (byte & 0b11000000) >> 6
                 cmp = (byte & 0b01100000) >> 5
                 crp = (byte & 0b00110000) >> 4
 
-                if byte & (1 << 2):
-                    message_bits[msg_index] = clp >> 1
-                    message_bits[msg_index + 1] = clp & 1
-                    msg_index += 2
-                    if not index_in():
-                        break
+                # Извлекаем флаги (младшие 3 бита)
+                clp_flag = (byte >> 2) & 1
+                cmp_flag = (byte >> 1) & 1
+                crp_flag = byte & 1
 
-                if byte & (1 << 1):
-                    message_bits[msg_index] = cmp >> 1
-                    message_bits[msg_index + 1] = cmp & 1
+                # Если флаг установлен — значит соответствующий старший блок был частью сообщения
+                if clp_flag and msg_index + 2 <= message_bit_len:
+                    message_bits.extend([(clp >> 1) & 1, clp & 1])
                     msg_index += 2
-                    if not index_in():
-                        break
+                if cmp_flag and msg_index + 2 <= message_bit_len:
+                    message_bits.extend([(cmp >> 1) & 1, cmp & 1])
+                    msg_index += 2
+                if crp_flag and msg_index + 2 <= message_bit_len:
+                    message_bits.extend([(crp >> 1) & 1, crp & 1])
+                    msg_index += 2
 
-                if byte & (1):
-                    message_bits[msg_index] = crp >> 1
-                    message_bits[msg_index + 1] = crp & 1
-                    msg_index += 2
+                if msg_index >= message_bit_len:
+                    break
             else:
                 continue
             break
 
-        return bitarray(message_bits[:msg_index])
+        return bitarray(message_bits)
 
     @staticmethod
     def get_max_capacity(img_in: PIL.Image.Image, message_bits: bitarray):

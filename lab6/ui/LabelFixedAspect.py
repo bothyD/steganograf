@@ -7,6 +7,14 @@ class LabelFixedAspect(PyQt6.QtWidgets.QLabel):
     def __init__(self, parent: PyQt6.QtWidgets.QWidget | None = None):
         super().__init__(parent=parent)
         self.setMinimumSize(1, 1)
+        self.__pixmap = None
+        self.setAlignment(PyQt6.QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.setStyleSheet("""
+            QLabel {
+                background-color: #EEE;
+                border-radius: 6px;
+            }
+        """)
 
     def setPixmap(self, a0: PyQt6.QtGui.QPixmap) -> None:
         self.__pixmap = a0
@@ -24,6 +32,8 @@ class LabelFixedAspect(PyQt6.QtWidgets.QLabel):
         return int(self.__pixmap.height() * a0 / self.__pixmap.width())
 
     def scaledPixmap(self) -> PyQt6.QtGui.QPixmap:
+        if self.__pixmap is None:
+            return PyQt6.QtGui.QPixmap()
         return self.__pixmap.scaled(
             self.size(),
             PyQt6.QtCore.Qt.AspectRatioMode.KeepAspectRatio,
@@ -32,4 +42,4 @@ class LabelFixedAspect(PyQt6.QtWidgets.QLabel):
 
     def resizeEvent(self, a0: PyQt6.QtGui.QResizeEvent | None) -> None:
         if self.__pixmap is not None:
-            return super().setPixmap(self.scaledPixmap())
+            super().setPixmap(self.scaledPixmap())
