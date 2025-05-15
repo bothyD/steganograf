@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Пакеты
+*.egg-info/
+dist/
+build/
+eggs/
+lib/
+lib64/
+*.egg
+
+# Виртуальные окружения
+venv/
+ENV/
+env/
+.venv/
+.env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Логи
+*.log
+
+# Конфигурационные файлы
+*.sqlite3
+*.db
+
+# Другие временные фай
