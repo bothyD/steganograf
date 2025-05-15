@@ -85,7 +85,7 @@ class AnalyseWorker(PyQt6.QtCore.QThread):
         out = {}
         out[AnalyseWorker.__CHI2_KEY] = control.ChiSquaredAnalysis.analyze(image)
         out[AnalyseWorker.__AUMP_KEY] = control.AUMPAnalysis.analyze(image, *aump)
-        # out[AnalyseWorker.__RS_KEY] = rs_a.analyze(image)
+        out[AnalyseWorker.__RS_KEY] = rs_a.analyze(image)
         return out
 
     def cancel(self):

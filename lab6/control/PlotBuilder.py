@@ -1,6 +1,6 @@
 import matplotlib
 import matplotlib.patheffects
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy
 
 
@@ -8,11 +8,9 @@ class PlotBuilder:
     __COLORS = ("tab:blue", "tab:red", "tab:green")
 
     @staticmethod
-    def build_plot(title: str, data):
+    def build_plot(title: str, data, save_path: str = "report/plot.png"):
         matplotlib.rcParams.update({"font.size": 14})
-        # matplotlib.pyplot.ion()
 
-        # xt, y = zip(*data.items())
         xt = data.keys()
         data = list(data.values())
         data = {k: [x[k] for x in data] for k in data[0].keys()}
@@ -21,7 +19,7 @@ class PlotBuilder:
         width = 0.25
         multiplier = 0
 
-        fix, ax = matplotlib.pyplot.subplots(constrained_layout=True)
+        fig, ax = plt.subplots(constrained_layout=True)
 
         for index, (attribute, measurement) in enumerate(data.items()):
             offset = width * multiplier
@@ -34,6 +32,7 @@ class PlotBuilder:
             )
             ax.bar_label(rects, padding=3)
             multiplier += 1
+
         for text in ax.texts:
             text.set_path_effects(
                 [matplotlib.patheffects.withStroke(linewidth=4, foreground="w")]
@@ -42,7 +41,11 @@ class PlotBuilder:
         ax.set_xticks(x + width, [str(x) for x in xt])
         ax.grid(axis="y")
         ax.legend()
-        if fix.canvas.manager is not None:
-            fix.canvas.manager.set_window_title(title)
 
-        matplotlib.pyplot.show()
+        if fig.canvas.manager is not None:
+            fig.canvas.manager.set_window_title(title)
+
+        
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
+        plt.show()
