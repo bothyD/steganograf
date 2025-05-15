@@ -1,0 +1,233 @@
+\documentclass[12pt, a4paper, english, russian]{article}
+
+\usepackage[margin=1.9cm]{geometry}
+\usepackage{fontspec, babel,
+            indentfirst, ulem,
+            mathtools, tocloft,
+            xurl, amsfonts,
+            hyperref, float,
+            listings, xcolor,
+            graphicx, caption,
+            subcaption, enumitem,
+            ragged2e, hyphenat,
+            csquotes, pgf}
+\usepackage[
+    parentracker=true,
+    backend=biber,
+    hyperref=auto,
+    language=autobib,
+    autolang=other,
+    style=gost-numeric,
+    sorting=none
+]{biblatex}
+
+\sloppy
+
+\setmainfont{Times New Roman}
+\setcounter{secnumdepth}{0}
+
+\setlength{\cftbeforetoctitleskip}{0em}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand\cftsecfont{\mdseries}
+\renewcommand\cftsecpagefont{\mdseries}
+
+\lstset{
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    breakatwhitespace=false,
+    breaklines=true,
+    keepspaces=true,
+    texcl=true
+}
+
+\hypersetup{
+    colorlinks=true,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=blue,
+    breaklinks=true
+}
+
+\raggedbottom
+\setlist[enumerate]{noitemsep,topsep=0pt}
+\setlist[itemize]{noitemsep,topsep=0pt}
+
+\addbibresource{refs.bib}
+
+\newcommand{\pic}[2]{
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.95\linewidth]{#1}
+		\caption{#2}
+	\end{figure}
+}
+
+\begin{document}
+
+\begin{titlepage}
+	\begin{center}
+		{\fontsize{11}{13}
+			Федеральное государственное бюджетное образовательное учреждение высшего образования
+
+			«Сибирский государственный университет телекоммуникаций и информатики»
+
+			(СибГУТИ)
+		}
+	\end{center}
+	\begin{center}
+		\begin{large}
+			Институт информатики и вычислительной техники
+		\end{large}
+	\end{center}
+
+	\begin{flushright}
+		\begin{minipage}[t]{0.59\textwidth}
+
+			\uline{09.04.01 ''Информатика и вычислительная техника''}
+
+			\uline{профиль ''Научные исследования в области}
+
+			\uline{информатики и вычислительной техники''}
+
+		\end{minipage}
+	\end{flushright}
+
+	\vspace{0.012\textheight}
+
+	\begin{center}
+		\begin{large}
+			Кафедра прикладной математики и кибернетики
+		\end{large}
+	\end{center}
+
+	\vspace{0.1\textheight}
+
+	\begin{center}
+		\begin{Large}
+			\textbf{Лабораторная работа №5}
+
+			\textbf{по дисциплине}
+
+			\textbf{Прикладная стеганография}
+
+		\end{Large}
+	\end{center}
+
+	\vspace{0.12\textheight}
+
+	\begin{flushleft}
+		\begin{large}
+			Выполнил:
+			\vspace{0.012\textheight}
+
+			студент гр.МГ-411 \hfill $\underset{\text{ФИО студента}}{\text{Каргин Роман Александрович}}$
+
+			«17» апреля 2025 г.
+
+		\end{large}
+	\end{flushleft}
+
+	\vfill
+
+	\begin{center}
+		\begin{large}
+			Новосибирск 2025 г.
+		\end{large}
+	\end{center}
+
+\end{titlepage}
+
+\tableofcontents
+
+\pagebreak
+
+\section{Задание}
+
+\begin{enumerate}
+	\item Составить обзор статистических методов стегоанализа изображений:  анализ статистики Хи-квадрат, RS-анализ, метод AUMP.
+	\item Реализовать программное средство для стегоанализа изображений, включающее в себя:
+	      \begin{enumerate}
+		      \item Визуальную атаку на стегоконтейнер, взятую из задания №1;
+
+		      \item Анализ статистики Хи-квадрат по частям изображения;
+
+		      \item RS-анализ, взятый из источника:  \url{https://github.com/b3dk7/StegExpose/blob/master/RSAnalysis.java}
+
+		      \item Метод AUMP, взятый из источника: \url{http://dde.binghamton.edu/download/structural_lsb_detectors/}
+
+		      \item Дополнительно можно реализовать стегоанализ на основе сжатия.
+	      \end{enumerate}
+\end{enumerate}
+Необходимо, чтобы программа позволяла загружать как отдельное изображение,
+так и сразу несколько изображений, предоставив пользователю возможность выбрать расположение файлов.
+
+Результаты стегоанализа должны отображаться в интерфейсе программного средства
+в понятном для пользователя виде, предполагая работу стороннего стегоаналитика.
+При анализе нескольких файлов сразу, результаты должны записываться в текстовый
+файл по выбранному пути сохранения.
+
+Отчет по работе должен содержать результаты всех пунктов задания, включая описание кода программы.
+
+\pagebreak
+
+\subsection{Имплементация}
+Ссылка на код --- \url{https://github.com/Nulliream/steg/tree/main/Task5}
+
+Все алгоритмы реализованы в модуле control. В качестве библиотеки для
+обработки изображений использовался PILLOW.
+
+Интерфейс --- в модуле ui. В качестве библиотеки дял интерфейса использовался Qt.
+
+\subsubsection{$\mathbf{\chi^2}$}
+$\chi^2$ анализ используется для определения вероятности того, что оба распределения,
+основываясь на большой выборке данных, относятся к одному типу распределения.
+
+В качестве сравниваемых выборок мы берём значения младших трёх битов: 000, 001 и т.д.
+Мы попарно нормализируем блоки ряда: 000 и 001, 010 и 011, 100 и 101, 110 и 111,
+суммируя значения и деля их на два. Данные два распределения мы и сравниваем.
+
+Код алгоритма предоставлен в классе Chi2. В логике реализовано вручную
+лишь построение выборок и их нормализация. Для выполнения теста $\chi^2$
+используется функция пакета scipy со степенью свободы 1.
+
+\subsubsection{RS}
+Изображение делится на группы соседних пикселей размером n. Определяется
+функция, принимающая в качестве аргумента пиксели группы и возвращающая некоторое
+вещественное число, описывающее их схожесть друг с другом ($f(x)$). Определяется функция,
+переворачивающая младший бит пикселя ($F(x)$).
+
+Определяются три группы:
+\begin{gather*}
+	\text{Регулярная: } G \in R \Leftrightarrow f(F(G)) > f(G) \\
+	\text{Сингулярная: } G \in S \Leftrightarrow f(F(G)) < f(G) \\
+	\text{Неиспользуемая: } G \in U \Leftrightarrow f(F(G)) = f(G)
+\end{gather*}
+где $F(G) = (F(x_1),\ldots,F(x_n))$. Чтобы решать, какие пиксели переворачивать,
+используется маска $M$, являющаяся массивом из значений $-1$, $0$, $1$.
+
+Пусть $R_M$ --- число регулярных групп для маски $M$, $S_M$ --- число сингулярных
+групп для маски $M$. По условиям $R_M + S_M \leq 1$ и $R_{-M} + S_{-M} \leq 1$
+мы можем предположить, что в обычном изображении $R_M \cong R_{-M}$ и $S_M \cong S_{-M}$.
+При увеличении вложенного сообщения разница между $R_M$ и $S_M$ уменьшается,
+а между $R_M$ и $R_{-M}$, $S_M$ и $S_{-M}$ увеличивается. Основываясь на этом,
+можно вычислить вероятный размер вложенного сообщения.
+
+\subsubsection{AUMP}
+Пиксели собираются в группы размером $n$ каждый, чтобы их распределение
+зависело от малого числа параметров.
+После тестируется гипотеза о том, что распределения без спрятанных битов
+и со спрятанными совпадают.
+
+\pagebreak
+
+\subsection{Результаты}
+\pic{images/app.png}{Главное окно программы}
+\pic{images/opening_images.png}{Открытие изображений}
+\pic{images/attack_images.png}{Визуальная атака}
+\pic{images/analysis.png}{Анализирование}
+\pic{images/saving.png}{Сохранение результатов}
+\pic{images/saves.png}{Сохранённые результаты}
+
+\end{document}

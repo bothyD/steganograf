@@ -1,0 +1,130 @@
+
+2025-03-30 22:30:00.798304: Starting RS analysis.
+	Image 0:
+		Number of regular groups (positive): 202204
+		Number of singular groups (positive): 108597
+		Number of regular groups (negative): 206259
+		Number of singular groups (negative): 106573
+		Difference for regular groups: 4055
+		Difference for singular groups: 2024
+		Percentage of regular groups (positive): 38.71844853535334
+		Percentage of singular groups (positive): 20.794382680826132
+		Percentage of regular groups (negative): 39.494908490699714
+		Percentage of singular groups (negative): 20.406822890537338
+		Difference for regular groups %: 0.776459955346372
+		Difference for singular groups %: 0.3875597902887933
+		Number of regular groups (positive for all flipped): 146018
+		Number of singular groups (positive for all flipped): 157067
+		Number of regular groups (negative for all flipped): 270086
+		Number of singular groups (negative for all flipped): 70431
+		Difference for regular groups (all flipped): 11049
+		Difference for singular groups (all flipped): 199655
+		Percentage of regular groups (positive for all flipped): 27.9598347126428
+		Percentage of singular groups (positive for all flipped): 30.075520544115562
+		Percentage of regular groups (negative for all flipped): 51.71663711459439
+		Percentage of singular groups (negative for all flipped): 13.486276477188735
+		Difference for regular groups (all flipped) %: 2.1156858314727653
+		Difference for singular groups (all flipped) %: 38.230360637405646
+		Total number of groups: 522242
+		Estimated percent of flipped pixels: 0.008030063436764727
+		Estimated message length (in percent of pixels)(p): 0.031612552148753865
+		Estimated message length (in bytes): 3107.6403264311
+	Image 1:
+		Number of regular groups (positive): 196473
+		Number of singular groups (positive): 83024
+		Number of regular groups (negative): 200659
+		Number of singular groups (negative): 82442
+		Difference for regular groups: 4186
+		Difference for singular groups: 582
+		Percentage of regular groups (positive): 37.62106456393779
+		Percentage of singular groups (positive): 15.897610686233584
+		Percentage of regular groups (negative): 38.422608675671434
+		Percentage of singular groups (negative): 15.786168098314574
+		Difference for regular groups %: 0.8015441117336408
+		Difference for singular groups %: 0.11144258791901072
+		Number of regular groups (positive for all flipped): 115048
+		Number of singular groups (positive for all flipped): 156370
+		Number of regular groups (negative for all flipped): 306825
+		Number of singular groups (negative for all flipped): 46386
+		Difference for regular groups (all flipped): 41322
+		Difference for singular groups (all flipped): 260439
+		Percentage of regular groups (positive for all flipped): 22.029633771316746
+		Percentage of singular groups (positive for all flipped): 29.942057513566507
+		Percentage of regular groups (negative for all flipped): 58.75149834750939
+		Percentage of singular groups (negative for all flipped): 8.882089146411051
+		Difference for regular groups (all flipped) %: 7.912423742249762
+		Difference for singular groups (all flipped) %: 49.86940920109834
+		Total number of groups: 522242
+		Estimated percent of flipped pixels: 0.005326561294947288
+		Estimated message length (in percent of pixels)(p): 0.021081659674874277
+		Estimated message length (in bytes): 2072.411472678841
+	Image 2:
+		Number of regular groups (positive): 212012
+		Number of singular groups (positive): 82435
+		Number of regular groups (negative): 212134
+		Number of singular groups (negative): 82144
+		Difference for regular groups: 122
+		Difference for singular groups: 291
+		Percentage of regular groups (positive): 40.59650506853145
+		Percentage of singular groups (positive): 15.784827723545789
+		Percentage of regular groups (negative): 40.61986588593028
+		Percentage of singular groups (negative): 15.729106429586285
+		Difference for regular groups %: 0.023360817398830426
+		Difference for singular groups %: 0.05572129395950536
+		Number of regular groups (positive for all flipped): 116814
+		Number of singular groups (positive for all flipped): 154122
+		Number of regular groups (negative for all flipped): 327837
+		Number of singular groups (negative for all flipped): 44603
+		Difference for regular groups (all flipped): 37308
+		Difference for singular groups (all flipped): 283234
+		Percentage of regular groups (positive for all flipped): 22.36779117727031
+		Percentage of singular groups (positive for all flipped): 29.51160573067658
+		Percentage of regular groups (negative for all flipped): 62.77492043918337
+		Percentage of singular groups (negative for all flipped): 8.54067654459044
+		Difference for regular groups (all flipped) %: 7.1438145534062745
+		Difference for singular groups (all flipped) %: 54.23424389459293
+		Total number of groups: 522242
+		Estimated percent of flipped pixels: 0.00040872395158747537
+		Estimated message length (in percent of pixels)(p): 0.0016335604557806143
+		Estimated message length (in bytes): 160.58552704505752
+	Image 3:
+		Number of regular groups (positive): 157433
+		Number of singular groups (positive): 64566
+		Number of regular groups (negative): 157416
+		Number of singular groups (negative): 64694
+		Difference for regular groups: 17
+		Difference for singular groups: 128
+		Percentage of regular groups (positive): 30.145602996312054
+		Percentage of singular groups (positive): 12.363233903056438
+		Percentage of regular groups (negative): 30.142347800445002
+		Percentage of singular groups (negative): 12.387743613114226
+		Difference for regular groups %: 0.0032551958670501415
+		Difference for singular groups %: 0.0245097100577893
+		Number of regular groups (positive for all flipped): 88904
+		Number of singular groups (positive for all flipped): 149902
+		Number of regular groups (negative for all flipped): 272379
+		Number of singular groups (negative for all flipped): 37077
+		Difference for regular groups (all flipped): 60998
+		Difference for singular groups (all flipped): 235302
+		Percentage of regular groups (positive for all flipped): 17.02352549201328
+		Percentage of singular groups (positive for all flipped): 28.70355122720884
+		Percentage of regular groups (negative for all flipped): 52.15570559242651
+		Percentage of singular groups (negative for all flipped): 7.099582186036359
+		Difference for regular groups (all flipped) %: 11.68002573519556
+		Difference for singular groups (all flipped) %: 45.05612340639014
+		Total number of groups: 522242
+		Estimated percent of flipped pixels: 0.00020138198654080626
+		Estimated message length (in percent of pixels)(p): 0.0008058525145236923
+		Estimated message length (in bytes): 79.21852558773705
+
+2025-03-30 22:30:37.891201: Starting AUMP analysis.
+	Image 0: 3.3066690240620686
+	Image 1: 3.4255341781339883
+	Image 2: -0.3439598608102955
+	Image 3: -1.1276703040172242
+
+2025-03-30 22:30:43.410284: Starting chi2 analysis.
+	Image 0: 0.0
+	Image 1: 2.401841024593683e-138
+	Image 2: 9.547191834906434e-36
+	Image 3: 0.7615006822050832

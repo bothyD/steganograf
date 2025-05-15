@@ -1,0 +1,7 @@
+\babel@toc {russian}{}\relax 
+\contentsline {section}{Задание}{2}{section*.1}%
+\contentsline {subsection}{Имплементация}{3}{section*.2}%
+\contentsline {subsubsection}{$\mathbf {\chi ^2}$}{3}{section*.3}%
+\contentsline {subsubsection}{RS}{3}{section*.4}%
+\contentsline {subsubsection}{AUMP}{3}{section*.5}%
+\contentsline {subsection}{Результаты}{4}{section*.6}%

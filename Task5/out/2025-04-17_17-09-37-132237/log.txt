@@ -1,0 +1,11 @@
+2025-04-17 17:08:01.581408: Starting RS analysis.
+	Image 0: contains
+	Image 1: doesn't contain
+
+2025-04-17 17:08:42.242686: Starting AUMP analysis.
+	Image 0: doesn't contain
+	Image 1: doesn't contain
+
+2025-04-17 17:08:43.485389: Starting chi2 analysis.
+	Image 0: contains
+	Image 1: doesn't contain

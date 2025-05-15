@@ -1,0 +1,5 @@
+2025-04-24 18:27:35.064263: Starting RS analysis.
+	Image 0: doesn't contain
+	Image 1: doesn't contain
+	Image 2: doesn't contain
+	Image 3: doesn't contain

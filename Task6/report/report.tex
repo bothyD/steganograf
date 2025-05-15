@@ -1,0 +1,196 @@
+\documentclass[12pt, a4paper, english, russian]{article}
+
+\usepackage[margin=1.9cm]{geometry}
+\usepackage{fontspec, babel,
+            indentfirst, ulem,
+            mathtools, tocloft,
+            xurl, amsfonts,
+            hyperref, float,
+            listings, xcolor,
+            graphicx, caption,
+            subcaption, enumitem,
+            ragged2e, hyphenat,
+            csquotes, pgf}
+\usepackage[
+    parentracker=true,
+    backend=biber,
+    hyperref=auto,
+    language=autobib,
+    autolang=other,
+    style=gost-numeric,
+    sorting=none
+]{biblatex}
+
+\sloppy
+
+\setmainfont{Times New Roman}
+\setcounter{secnumdepth}{0}
+
+\setlength{\cftbeforetoctitleskip}{0em}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\renewcommand\cftsecfont{\mdseries}
+\renewcommand\cftsecpagefont{\mdseries}
+
+\lstset{
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    breakatwhitespace=false,
+    breaklines=true,
+    keepspaces=true,
+    texcl=true
+}
+
+\hypersetup{
+    colorlinks=true,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=blue,
+    breaklinks=true
+}
+
+\raggedbottom
+\setlist[enumerate]{noitemsep,topsep=0pt}
+\setlist[itemize]{noitemsep,topsep=0pt}
+
+\addbibresource{refs.bib}
+
+\newcommand{\pic}[2]{
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=0.95\linewidth]{#1}
+		\caption{#2}
+	\end{figure}
+}
+
+\begin{document}
+
+\begin{titlepage}
+	\begin{center}
+		{\fontsize{11}{13}
+			Федеральное государственное бюджетное образовательное учреждение высшего образования
+
+			«Сибирский государственный университет телекоммуникаций и информатики»
+
+			(СибГУТИ)
+		}
+	\end{center}
+	\begin{center}
+		\begin{large}
+			Институт информатики и вычислительной техники
+		\end{large}
+	\end{center}
+
+	\begin{flushright}
+		\begin{minipage}[t]{0.59\textwidth}
+
+			\uline{09.04.01 ''Информатика и вычислительная техника''}
+
+			\uline{профиль ''Научные исследования в области}
+
+			\uline{информатики и вычислительной техники''}
+
+		\end{minipage}
+	\end{flushright}
+
+	\vspace{0.012\textheight}
+
+	\begin{center}
+		\begin{large}
+			Кафедра прикладной математики и кибернетики
+		\end{large}
+	\end{center}
+
+	\vspace{0.1\textheight}
+
+	\begin{center}
+		\begin{Large}
+			\textbf{Лабораторная работа №6}
+
+			\textbf{по дисциплине}
+
+			\textbf{Прикладная стеганография}
+
+		\end{Large}
+	\end{center}
+
+	\vspace{0.12\textheight}
+
+	\begin{flushleft}
+		\begin{large}
+			Выполнил:
+			\vspace{0.012\textheight}
+
+			студент гр.МГ-411 \hfill $\underset{\text{ФИО студента}}{\text{Каргин Роман Александрович}}$
+
+			«21» апреля 2025 г.
+
+		\end{large}
+	\end{flushleft}
+
+	\vfill
+
+	\begin{center}
+		\begin{large}
+			Новосибирск 2025 г.
+		\end{large}
+	\end{center}
+
+\end{titlepage}
+
+\tableofcontents
+
+\pagebreak
+
+\section{Задание}
+
+Написать программу, которая использует выходные текстовые файлы из программного средства стегоанализа, реализованного в задании №5 для подсчета ошибки 1 и 2 рода. Заполненные контейнеры взять из результатов работ №3-4.
+
+Отчет по работе должен содержать описание формата вывода данных стегоанализа, подсчет ошибки 1 и 2 рода и таблицу сравнения методов стегоанализа. В таблице привести результаты стегоанализа при разном заполнении контейнеров, указав максимально возможную фактическую ёмкость контейнера и \% заполнения стегоконтейнера. Например, 50\% заполненный стегоконтейнер при последовательном заполнении; при рассеянном заполнении; также для 100\%. Привести ссылку на исходники.
+\pagebreak
+
+\subsection{Результаты}
+Код --- \url{https://github.com/Nulliream/steg/tree/main/Task6}
+
+Ниже показаны результаты замеров. По X обозначен процент заполнения контейнера. По Y --
+процент ошибок первого/второго рода в зависимости от наличия сообщения в проверяемом контейнере..
+\pic{images/seq-20.png}{Сравнение последовательного заполнения для Chi2, AUMP, RS для 20 изображений}
+\pic{images/lab3-20.png}{Сравнение заполнения из лабораторной 3 для Chi2, AUMP, RS для 20 изображений}
+\pic{images/seq-100.png}{Сравнение последовательного заполнения для Chi2, AUMP для 100 изображений}
+\pic{images/lab3-100.png}{Сравнение заполнения из лабораторной 3 для Chi2, AUMP для 100 изображений}
+\pic{images/lab4-100.png}{Сравнение заполнения из лабораторной 4 для Chi2, AUMP для 100 изображений}
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{c|c|c|c}
+		Заполнитель & Тип ошибки & Детектор & Процент \\
+		\hline
+		Послед      & I          & Chi2     & 60      \\
+		Послед      & I          & AUMP     & 30      \\
+		Послед      & I          & RS       & 35      \\
+		\hline
+		Послед      & II         & Chi2     & 35      \\
+		Послед      & II         & AUMP     & 15      \\
+		Послед      & II         & RS       & 0       \\
+		\hline
+		Lab3        & I          & Chi2     & 60      \\
+		Lab3        & I          & AUMP     & 30      \\
+		Lab3        & I          & RS       & 35      \\
+		\hline
+		Lab3        & II         & Chi2     & 25      \\
+		Lab3        & II         & AUMP     & 10      \\
+		Lab3        & II         & RS       & 20      \\
+		\hline
+		Lab4        & I          & Chi2     & 80      \\
+		Lab4        & I          & AUMP     & 20      \\
+		Lab4        & I          & RS       & -       \\
+		\hline
+		Lab4        & II         & Chi2     & 20      \\
+		Lab4        & II         & AUMP     & 80      \\
+		Lab4        & II         & RS       & -
+	\end{tabular}
+	\caption{Таблица сравнений}
+\end{table}
+
+\end{document}
