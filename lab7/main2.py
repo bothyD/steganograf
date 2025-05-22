@@ -32,6 +32,10 @@ class SteganographyApp:
         self.configure_style()
         self.setup_ui()
 
+        # Для хранения максимального объема встроенной информации
+        self.max_bits_before = 0
+        self.max_bits_after = 0
+
     def configure_style(self):
         self.style.configure('TButton', 
                             background=self.colors["primary"],
@@ -108,6 +112,7 @@ class SteganographyApp:
         btn_frame = ttk.Frame(message_frame, style='TFrame')
         btn_frame.pack(fill=tk.X)
         
+        embed_standard_btn = ttk.Button
         embed_standard_btn = ttk.Button(btn_frame, text="Embed Message (Standard)", 
                              command=self.embed_standard, 
                              style='Success.TButton')
@@ -143,6 +148,10 @@ class SteganographyApp:
             self.container_image = np.array(image)
             self.file_status.set("Image loaded successfully.")
             messagebox.showinfo("Image", "Image loaded successfully.")
+
+    def read_text_from_file(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
 
     def text_to_bits(self, text):
         result = bitarray()
@@ -191,11 +200,8 @@ class SteganographyApp:
                     break
         return stego_array
 
-    def hash_function(self, bit_segment):
-        h = 0
-        for i, bit in enumerate(bit_segment):
-            h = (h + (i + 1) * bit) % 2
-        return h
+    def linear_hash_function(self, bit_segment):
+        return sum(bit_segment) % 2  # Простая линейная хэш-функция
 
     def embed_with_hash(self):
         if self.container_image is None:
@@ -215,7 +221,7 @@ class SteganographyApp:
 
         for i in range(0, len(self.message_bits), block_size):
             segment = self.message_bits[i:i + block_size]
-            h = self.hash_function(segment)
+            h = self.linear_hash_function(segment)
             hash_bits += segment + [h]
 
         stego_array = self.interpolation_method(self.container_image, hash_bits)
@@ -285,6 +291,31 @@ class SteganographyApp:
         img.save(filename)
         plt.imshow(array, cmap='gray')
         plt.title(f"Image: {filename}")
+        plt.show()
+
+    def evaluate_bit_distribution(self):
+        if self.container_image is None:
+            messagebox.showerror("Error", "Please load an image first.")
+            return
+
+        height, width = self.container_image.shape
+        bit_counts = np.zeros((8, 8), dtype=int)
+
+        for i in range(0, height, 8):
+            for j in range(0, width, 8):
+                block = self.container_image[i:i+8, j:j+8]
+                if block.shape[0] < 8 or block.shape[1] < 8:
+                    continue
+                # Подсчет битов в блоке
+                for x in range(8):
+                    for y in range(8):
+                        if block[x, y] % 2 == 1:  # Проверка на нечетность
+                            bit_counts[x, y] += 1
+
+        # Вывод распределения битов
+        plt.imshow(bit_counts, cmap='hot', interpolation='nearest')
+        plt.title("Bit Distribution in 8x8 Blocks")
+        plt.colorbar(label='Count of 1s')
         plt.show()
 
 if __name__ == "__main__":
