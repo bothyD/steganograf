@@ -15,6 +15,8 @@ class SteganographyApp:
         self.message_bits = []
         self.stego_image = None
         self.key = 12345
+        self.extract_mode_standard = tk.BooleanVar(value=True)
+        self.extract_mode_hash = tk.BooleanVar(value=False)
         self.colors = {
             "primary": "#4a6fa5",
             "primary_dark": "#3d5d8a",
@@ -93,6 +95,20 @@ class SteganographyApp:
         self.output_text.config(state='normal')
         self.output_text.bind("<Control-c>", lambda e: self.root.clipboard_append(self.output_text.selection_get()))
 
+        # ---------------------------
+        mode_frame = ttk.Frame(message_frame, style='TFrame')
+        mode_frame.pack(anchor=tk.W, pady=(10, 0))
+
+        ttk.Label(mode_frame, text="Extraction mode:").pack(side=tk.LEFT, padx=(0, 10))
+
+        ttk.Checkbutton(
+            mode_frame, text="Standard", variable=self.extract_mode_standard
+        ).pack(side=tk.LEFT, padx=(0, 10))
+
+        ttk.Checkbutton(
+            mode_frame, text="With Hash", variable=self.extract_mode_hash
+        ).pack(side=tk.LEFT)
+
     def load_image(self):
         path = filedialog.askopenfilename(filetypes=[("Image files", "*.png *.bmp")])
         if path:
@@ -139,14 +155,20 @@ class SteganographyApp:
 
                         if full_message[idx] == 1:
                             if interpolated_value % 2 == 0:
-                                stego_array[i, j] += 1
+                                stego_array[i, j] = min(pixel_value + 1, 255)
+                            else:
+                                stego_array[i, j] = max(pixel_value - 1, 0)
                         else:
                             if interpolated_value % 2 == 1:
-                                stego_array[i, j] -= 1
+                                stego_array[i, j] = max(pixel_value - 1, 0)
+                            else:
+                                stego_array[i, j] = min(pixel_value + 1, 255)
+
                         idx += 1
                 else:
                     break
         return stego_array
+
 
     def linear_hash_function(self, bit_segment):
         return sum(bit_segment) % 2
@@ -161,8 +183,8 @@ class SteganographyApp:
             messagebox.showerror("Error", "Please enter a message.")
             return
 
-        raw_message_bits = self.text_to_bits(message)
-        encrypted_bits = self.encrypt_bits(raw_message_bits)
+        raw_bits = self.text_to_bits(message)
+        encrypted_bits = self.encrypt_bits(raw_bits)
 
         block_size = 8
         block_with_hash = []
@@ -170,18 +192,21 @@ class SteganographyApp:
         for i in range(0, len(encrypted_bits), block_size):
             segment = encrypted_bits[i:i + block_size]
             if len(segment) < block_size:
-                segment += [0] * (block_size - len(segment))
+                segment += [0] * (block_size - len(segment))  # padding
             h = self.linear_hash_function(segment)
             block_with_hash.extend(segment + [h])
 
-        message_length = len(block_with_hash)
-        length_bits = [int(bit) for bit in format(message_length, '032b')]
+        print(f"[With Hash] Original bits: {len(raw_bits)} Encrypted: {len(encrypted_bits)} With hash: {len(block_with_hash)}")
+
+        length_bits = self.encrypt_bits([int(b) for b in format(len(block_with_hash), '032b')])
+
         full_bits = length_bits + block_with_hash
 
         stego_array = self.interpolation_method(self.container_image, full_bits)
         self.stego_image = stego_array
         self.save_and_show(stego_array, "src/img_out/stego_hash.png")
         messagebox.showinfo("Success", "Message embedded with hash.")
+
 
     def embed_standard(self):
         if self.container_image is None:
@@ -206,13 +231,20 @@ class SteganographyApp:
             messagebox.showerror("Error", "No stego image available.")
             return
 
+        use_standard = self.extract_mode_standard.get()
+        use_hash = self.extract_mode_hash.get()
+
+        if not (use_standard or use_hash):
+            messagebox.showerror("Error", "Please select at least one extraction mode.")
+            return
+
         img = self.stego_image
         height, width = img.shape
         extracted_bits = []
 
-        idx = 0
         length_bits = ""
         message_length = None
+        idx = 0
 
         for i in range(height):
             for j in range(width):
@@ -225,19 +257,71 @@ class SteganographyApp:
                     if message_length is None:
                         length_bits += str(bit)
                         if len(length_bits) == 32:
-                            message_length = int(length_bits, 2)
-                    else:
-                        extracted_bits.append(bit)
-                        if len(extracted_bits) >= message_length:
-                            break
+                            # Сброс генератора перед расшифровкой длины
+                            random.seed(self.key)
+
+                            decrypted_length_bits = [int(b) ^ random.randint(0, 1) for b in map(int, length_bits)]
+                            length_str = ''.join(str(b) for b in decrypted_length_bits)
+                            message_length = int(length_str, 2)
+                            print(f"[Extract] Decrypted length bits: {length_str} → {message_length}")
+                        continue
+
+
+                    extracted_bits.append(bit)
+                    if len(extracted_bits) >= message_length:
+                        break
             if message_length and len(extracted_bits) >= message_length:
                 break
+        
 
-        decrypted = self.decrypt_bits(extracted_bits)
-        text = self.bits_to_text(decrypted)
+        results = []
+        if use_standard:
+            try:
+                decrypted = self.decrypt_bits(extracted_bits)
+                text = self.bits_to_text(decrypted)
+                results.append("Standard:\n" + text)
+            except Exception as e:
+                results.append(f"Standard: error — {e}")
+
+        if use_hash:
+            try:
+                decrypted = self.decrypt_bits(extracted_bits)
+                text = self.validate_and_extract_from_hash(decrypted)
+                results.append("With Hash:\n" + text)
+            except Exception as e:
+                results.append(f"With Hash: error — {e}")
+
+        final_output = "\n\n---\n\n".join(results)
+
         self.output_text.config(state='normal')
         self.output_text.delete(1.0, tk.END)
-        self.output_text.insert(tk.END, text)
+        self.output_text.insert(tk.END, final_output)
+        print(f"[Extract] Raw bits: {len(extracted_bits)} (Expected: {message_length})")
+
+    def validate_and_extract_from_hash(self, bits):
+        block_size = 8
+        valid_bits = []
+        errors = 0
+        total_blocks = 0
+
+        for i in range(0, len(bits), block_size + 1):
+            block = bits[i:i + block_size + 1]
+            if len(block) < block_size + 1:
+                print(f"[With Hash] Skipped incomplete block at end.")
+                break
+            segment = block[:block_size]
+            h = block[-1]
+            h_check = self.linear_hash_function(segment)
+
+            if h == h_check:
+                valid_bits.extend(segment)
+            else:
+                errors += 1
+            total_blocks += 1
+
+        print(f"[With Hash] Extracted blocks: {total_blocks}, Errors: {errors}, Valid: {total_blocks - errors}")
+        return valid_bits
+
 
     def save_and_show(self, array, filename):
         img = Image.fromarray(array.astype(np.uint8))
