@@ -6,14 +6,15 @@ from matplotlib import pyplot as plt
 from PIL import Image
 import random
 from bitarray import bitarray
+import os
 
 class SteganographyApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Steganography Tool")
         self.container_image = None
-        self.message_bits = []
         self.stego_image = None
+        self.message_bits = []
         self.key = 12345
         self.extract_mode_standard = tk.BooleanVar(value=True)
         self.extract_mode_hash = tk.BooleanVar(value=False)
@@ -78,7 +79,7 @@ class SteganographyApp:
         btn_frame = ttk.Frame(message_frame, style='TFrame')
         btn_frame.pack(fill=tk.X)
 
-        embed_standard_btn = ttk.Button(btn_frame, text="Embed Message (Standard)", command=self.embed_standard, style='Success.TButton')
+        embed_standard_btn = ttk.Button(btn_frame, text="Embed Message (Standard)", command=self.embed_message_standard, style='Success.TButton')
         embed_standard_btn.pack(side=tk.LEFT)
 
         embed_hash_btn = ttk.Button(btn_frame, text="Embed Message (with Hash)", command=self.embed_with_hash, style='Primary.TButton')
@@ -112,57 +113,93 @@ class SteganographyApp:
     def load_image(self):
         path = filedialog.askopenfilename(filetypes=[("Image files", "*.png *.bmp")])
         if path:
-            image = Image.open(path).convert('L')
-            self.container_image = np.array(image)
-            self.file_status.set("Image loaded successfully.")
-            messagebox.showinfo("Image", "Image loaded successfully.")
+            try:
+                image = Image.open(path).convert('L')
+                image_array = np.array(image)
+                self.container_image = image_array.copy()
+                self.stego_image = image_array.copy()  # сохраняем исходное изображение
+                self.file_status.set("Image loaded successfully.")
+                print(self.container_image)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load image: {e}")
 
+
+    def embed_with_hash(self):
+        pass
+
+    def embed_message_standard(self):
+        if self.stego_image is None:
+            messagebox.showerror("Error", "Please load an image first.")
+            return
+
+        message = self.message_entry.get()
+        if not message:
+            messagebox.showerror("Error", "Please enter a message.")
+            return
+
+        # 1. Преобразуем сообщение в биты
+        message_bits = self.text_to_bits(message)
+
+        # 2. Добавляем длину сообщения (в 32 битах)
+        length_bits = format(len(message_bits), '032b')  # строка из 0 и 1
+        length_bits = [int(b) for b in length_bits]
+
+        full_message_bits = length_bits + message_bits
+
+        # 3. Встраиваем сообщение
+        self.stego_image = self.interpolation_method(self.stego_image.copy(), full_message_bits)
+
+        # 4. Сохраняем изображение
+        output_dir = "lab7/src/img_out/"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        output_path = os.path.join(output_dir, "stego_standard.png")
+        self.save_image(self.stego_image, output_path)
+
+        messagebox.showinfo("Success", f"Message successfully embedded.\nSaved to {output_path}")
+    
     def text_to_bits(self, text):
         result = bitarray()
         result.frombytes(text.encode('utf-8'))
         return list(result)
+    
+    def save_image(self, array, path):
+        image = Image.fromarray(array.astype(np.uint8))
+        image.save(path)
 
-    def bits_to_text(self, bits):
-        bit_str = bitarray(bits)
-        try:
-            return bit_str.tobytes().decode('utf-8', errors='ignore')
-        except Exception as e:
-            return f"Decoding error: {e}"
 
-    def encrypt_bits(self, bits):
-        random.seed(self.key)
-        return [bit ^ random.randint(0, 1) for bit in bits]
-
-    def decrypt_bits(self, bits):
-        return self.encrypt_bits(bits)
-
-    def interpolation_method(self, img_array, message_bits):
+    def interpolation_method(self, img_array, full_message_bits):
+        print(full_message_bits)
         height, width = img_array.shape
         stego_array = img_array.copy()
-
-        message_length = len(message_bits)
-        length_bits = format(message_length, '032b')
-        full_message = [int(bit) for bit in length_bits] + message_bits
 
         idx = 0
         for i in range(height):
             for j in range(width):
-                if idx < len(full_message):
+                if idx < len(full_message_bits):
                     pixel_value = stego_array[i, j]
+
+
                     if j < width - 1:
                         next_pixel_value = stego_array[i, j + 1]
                         interpolated_value = (int(pixel_value) + int(next_pixel_value)) // 2
 
-                        if full_message[idx] == 1:
+                        if full_message_bits[idx] == 1:
                             if interpolated_value % 2 == 0:
-                                stego_array[i, j] = min(pixel_value + 1, 255)
+                                # Проверяем, не приведет ли добавление к переполнению
+                                if pixel_value < 255:
+                                    stego_array[i, j] = pixel_value+1
                             else:
-                                stego_array[i, j] = max(pixel_value - 1, 0)
+                                if pixel_value > 0:
+                                    stego_array[i, j] = pixel_value-1
                         else:
                             if interpolated_value % 2 == 1:
-                                stego_array[i, j] = max(pixel_value - 1, 0)
+                                if pixel_value > 0:
+                                    stego_array[i, j] = pixel_value-1
                             else:
-                                stego_array[i, j] = min(pixel_value + 1, 255)
+                                if pixel_value < 255:
+                                    stego_array[i, j] = pixel_value+1
 
                         idx += 1
                 else:
@@ -170,165 +207,94 @@ class SteganographyApp:
         return stego_array
 
 
-    def linear_hash_function(self, bit_segment):
-        return sum(bit_segment) % 2
-
-    def embed_with_hash(self):
-        if self.container_image is None:
-            messagebox.showerror("Error", "Please load an image first.")
-            return
-
-        message = self.message_entry.get()
-        if not message:
-            messagebox.showerror("Error", "Please enter a message.")
-            return
-
-        raw_bits = self.text_to_bits(message)
-        encrypted_bits = self.encrypt_bits(raw_bits)
-
-        block_size = 8
-        block_with_hash = []
-
-        for i in range(0, len(encrypted_bits), block_size):
-            segment = encrypted_bits[i:i + block_size]
-            if len(segment) < block_size:
-                segment += [0] * (block_size - len(segment))  # padding
-            h = self.linear_hash_function(segment)
-            block_with_hash.extend(segment + [h])
-
-        print(f"[With Hash] Original bits: {len(raw_bits)} Encrypted: {len(encrypted_bits)} With hash: {len(block_with_hash)}")
-
-        length_bits = self.encrypt_bits([int(b) for b in format(len(block_with_hash), '032b')])
-
-        full_bits = length_bits + block_with_hash
-
-        stego_array = self.interpolation_method(self.container_image, full_bits)
-        self.stego_image = stego_array
-        self.save_and_show(stego_array, "src/img_out/stego_hash.png")
-        messagebox.showinfo("Success", "Message embedded with hash.")
-
-
-    def embed_standard(self):
-        if self.container_image is None:
-            messagebox.showerror("Error", "Please load an image first.")
-            return
-
-        message = self.message_entry.get()
-        if not message:
-            messagebox.showerror("Error", "Please enter a message.")
-            return
-
-        self.message_bits = self.text_to_bits(message)
-        self.message_bits = self.encrypt_bits(self.message_bits)
-
-        stego_array = self.interpolation_method(self.container_image, self.message_bits)
-        self.stego_image = stego_array
-        self.save_and_show(stego_array, "src/img_out/stego_standard.png")
-        messagebox.showinfo("Success", "Message embedded.")
-
     def extract_message(self):
-        if self.stego_image is None:
-            messagebox.showerror("Error", "No stego image available.")
-            return
-
         use_standard = self.extract_mode_standard.get()
         use_hash = self.extract_mode_hash.get()
 
         if not (use_standard or use_hash):
             messagebox.showerror("Error", "Please select at least one extraction mode.")
             return
+        if use_standard:
+            self.extract_standard(self.stego_image)
+    
 
-        img = self.stego_image
-        height, width = img.shape
-        extracted_bits = []
+    def extract_standard(self, stego_array):
+        height, width = stego_array.shape
+        message_bits = []
 
-        length_bits = ""
-        message_length = None
+        # Извлечение длины сообщения (первые 32 бита)
         idx = 0
-
         for i in range(height):
             for j in range(width):
-                if j < width - 1:
-                    pixel = img[i, j]
-                    next_pixel = img[i, j + 1]
-                    interpolated = (int(pixel) + int(next_pixel)) // 2
-                    bit = 1 if interpolated % 2 else 0
+                if idx < 32:  # Читаем только первые 32 бита
+                    pixel_value = stego_array[i, j]
 
-                    if message_length is None:
-                        length_bits += str(bit)
-                        if len(length_bits) == 32:
-                            # Сброс генератора перед расшифровкой длины
-                            random.seed(self.key)
+                    # Пропускаем пиксели со значениями 255, 254, 0 и 1
+                    
 
-                            decrypted_length_bits = [int(b) ^ random.randint(0, 1) for b in map(int, length_bits)]
-                            length_str = ''.join(str(b) for b in decrypted_length_bits)
-                            message_length = int(length_str, 2)
-                            print(f"[Extract] Decrypted length bits: {length_str} → {message_length}")
+                    if j < width - 1:
+                        next_pixel_value = stego_array[i, j + 1]
+                        interpolated_value = (int(pixel_value) + int(next_pixel_value)) // 2
+
+                        # Определяем, является ли пиксель четным или нечетным
+                        if interpolated_value % 2 == 0:
+                            message_bits.append(0)
+                        else:
+                            message_bits.append(1)
+
+                        idx += 1
+                else:
+                    break
+            if idx >= 32:
+                break
+
+        print(message_bits)
+        # Получаем длину сообщения
+        message_length = int(''.join(map(str, message_bits)), 2)
+        print(message_length)
+
+        # Извлечение сообщения
+        message_bits = []
+        idx = 0
+        for i in range(height):
+            for j in range(width):
+                if idx < message_length * 8:  # Читаем только нужное количество битов
+                    pixel_value = stego_array[i, j]
+
+                    # Пропускаем пиксели со значениями 255, 254, 0 и 1
+                    if pixel_value in [255, 254, 0, 1]:
                         continue
 
+                    if j < width - 1:
+                        next_pixel_value = stego_array[i, j + 1]
+                        interpolated_value = (int(pixel_value) + int(next_pixel_value)) // 2
 
-                    extracted_bits.append(bit)
-                    if len(extracted_bits) >= message_length:
-                        break
-            if message_length and len(extracted_bits) >= message_length:
+                        # Определяем, является ли пиксель четным или нечетным
+                        if interpolated_value % 2 == 0:
+                            message_bits.append(0)
+                        else:
+                            message_bits.append(1)
+
+                        idx += 1
+                else:
+                    break
+            if idx >= message_length * 8:
                 break
-        
 
-        results = []
-        if use_standard:
-            try:
-                decrypted = self.decrypt_bits(extracted_bits)
-                text = self.bits_to_text(decrypted)
-                results.append("Standard:\n" + text)
-            except Exception as e:
-                results.append(f"Standard: error — {e}")
+        # Преобразование битов в текст
+        message = ''
+        for i in range(0, len(message_bits), 8):
+            byte = message_bits[i:i + 8]
+            if len(byte) < 8:
+                break
+            message += chr(int(''.join(map(str, byte)), 2))
 
-        if use_hash:
-            try:
-                decrypted = self.decrypt_bits(extracted_bits)
-                text = self.validate_and_extract_from_hash(decrypted)
-                results.append("With Hash:\n" + text)
-            except Exception as e:
-                results.append(f"With Hash: error — {e}")
-
-        final_output = "\n\n---\n\n".join(results)
-
+        print(message)
         self.output_text.config(state='normal')
         self.output_text.delete(1.0, tk.END)
-        self.output_text.insert(tk.END, final_output)
-        print(f"[Extract] Raw bits: {len(extracted_bits)} (Expected: {message_length})")
-
-    def validate_and_extract_from_hash(self, bits):
-        block_size = 8
-        valid_bits = []
-        errors = 0
-        total_blocks = 0
-
-        for i in range(0, len(bits), block_size + 1):
-            block = bits[i:i + block_size + 1]
-            if len(block) < block_size + 1:
-                print(f"[With Hash] Skipped incomplete block at end.")
-                break
-            segment = block[:block_size]
-            h = block[-1]
-            h_check = self.linear_hash_function(segment)
-
-            if h == h_check:
-                valid_bits.extend(segment)
-            else:
-                errors += 1
-            total_blocks += 1
-
-        print(f"[With Hash] Extracted blocks: {total_blocks}, Errors: {errors}, Valid: {total_blocks - errors}")
-        return valid_bits
+        self.output_text.insert(tk.END, message)
 
 
-    def save_and_show(self, array, filename):
-        img = Image.fromarray(array.astype(np.uint8))
-        img.save(filename)
-        plt.imshow(array, cmap='gray')
-        plt.title(f"Image: {filename}")
-        plt.show()
 
 if __name__ == "__main__":
     root = tk.Tk()
