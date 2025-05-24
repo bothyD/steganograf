@@ -1,113 +1,101 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
 import numpy as np
+from PIL import Image
 
-class WatermarkApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Watermark Application")
-        self.original_image = None
-        self.watermarked_image = None
-        self.extracted_image = None
-        load_button = tk.Button(root, text="Загрузить изображение", command=self.load_image)
-        load_button.pack(pady=10)
-        embed_button = tk.Button(root, text="Внедрить ЦВЗ", command=self.embed_watermark)
-        embed_button.pack(pady=10)
-        extract_button = tk.Button(root, text="Извлечь ЦВЗ", command=self.extract_watermark)
-        extract_button.pack(pady=10)
-        image_frame = tk.Frame(root)
-        image_frame.pack(pady=10)
-        self.original_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.original_canvas.grid(row=0, column=0, padx=10)
-        self.watermarked_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.watermarked_canvas.grid(row=0, column=1, padx=10)
-        self.extracted_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.extracted_canvas.grid(row=0, column=2, padx=10)
+# --- Битовые утилиты ---
+def str_to_bits(s):
+    return [int(b) for c in s for b in format(ord(c), '08b')]
 
-    def load_image(self):
-        file_path = filedialog.askopenfilename(title="Выберите изображение", filetypes=[("Images", "*.bmp *.png *.jpg *.pgm")])
-        if file_path:
-            self.original_image = Image.open(file_path)
-            self.update_view(self.original_image, self.original_canvas)
-    
+def bits_to_str(bits):
+    return ''.join(chr(int(''.join(map(str, bits[i:i+8])), 2)) for i in range(0, len(bits), 8))
 
-    def embed_watermark(self):
-        if self.original_image is None:
-            messagebox.showerror("Ошибка", "Сначала загрузите изображение.")
-            return
+def encode_message_with_length(message):
+    message_bits = str_to_bits(message)
+    length_bits = format(len(message_bits), '032b')
+    print("📏 Сообщение длиной (в битах):", len(message_bits))
+    print("🧠 Биты длины:", length_bits)
+    return [int(b) for b in length_bits] + message_bits
 
-        watermark_path = filedialog.askopenfilename(title="Выберите ЦВЗ", filetypes=[("Images", "*.bmp *.png *.jpg *.pgm")])
-        if not watermark_path:
-            return
+# --- Встраивание с учётом интерполяции ---
+def interpolation_method(img_array, full_message_bits):
+    height, width = img_array.shape
+    stego_array = img_array.copy()
+    idx = 0
+    total_bits = len(full_message_bits)
+    bitlog = []
 
-        watermark = Image.open(watermark_path).convert("RGB")  
-        watermarked = self.original_image.copy()
-        v = 0.15
+    for i in range(height):
+        for j in range(width - 1):
+            if idx >= total_bits:
+                return stego_array
 
-        original_array = np.array(watermarked)
-        watermark_array = np.array(watermark)
+            p1 = int(stego_array[i, j])
+            p2 = int(stego_array[i, j + 1])
+            desired_bit = full_message_bits[idx]
+            interpolated = (p1 + p2) // 2
+            current_bit = interpolated % 2
 
-        # Проверяем размеры изображений
-        if watermark_array.shape[2] != 3:
-            messagebox.showerror("Ошибка", "Водяной знак должен быть цветным изображением (RGB).")
-            return
+            bitlog.append(current_bit)
 
-        for y in range(min(watermark_array.shape[0], original_array.shape[0])):
-            for x in range(min(watermark_array.shape[1], original_array.shape[1])):
-                # Убедимся, что мы получаем RGB значения
-                if original_array.ndim == 3 and original_array.shape[2] == 3:
-                    R, G, B = original_array[y, x][:3]
-                else:
-                    messagebox.showerror("Ошибка", "Изображение должно быть цветным (RGB).")
-                    return
+            if current_bit != desired_bit:
+                changed = False
+                for dp1 in [-1, 1]:
+                    np1 = p1 + dp1
+                    if 0 <= np1 <= 255:
+                        new_bit = ((np1 + p2) // 2) % 2
+                        if new_bit == desired_bit:
+                            stego_array[i, j] = np1
+                            changed = True
+                            break
 
-                lambda_ = 0.2989 * R + 0.5866 * G + 0.1145 * B
+                if not changed:
+                    for dp2 in [-1, 1]:
+                        np2 = p2 + dp2
+                        if 0 <= np2 <= 255:
+                            new_bit = ((p1 + np2) // 2) % 2
+                            if new_bit == desired_bit:
+                                stego_array[i, j + 1] = np2
+                                break
 
-                # Извлекаем значение серого из водяного знака
-                bit = 1 if np.mean(watermark_array[y, x]) > 128 else 0
-                newB = B + (2 * bit - 1) * v * lambda_
-                newB = max(0, min(255, int(newB)))  
-                original_array[y, x][2] = newB  
+            idx += 1
 
-        self.watermarked_image = Image.fromarray(original_array)
-        self.update_view(self.watermarked_image, self.watermarked_canvas)
+            if idx == 32:
+                print("🧪 Первые 32 встроенных бита:", bitlog)
+                print("🧪 Ожидалось:", full_message_bits[:32])
 
-    def extract_watermark(self):
-        if self.original_image is None or self.watermarked_image is None:
-            messagebox.showerror("Ошибка", "Сначала загрузите изображение и внедрите ЦВЗ.")
-            return
-        extracted = Image.new("L", self.original_image.size)
-        extracted_array = np.zeros((self.original_image.height, self.original_image.width), dtype=np.uint8)  # Создаем массив для извлеченного изображения
+    return stego_array
 
-        original_array = np.array(self.original_image)
-        watermarked_array = np.array(self.watermarked_image)
+# --- Извлечение ---
+def extract_standard(stego_array):
+    height, width = stego_array.shape
+    flat_pairs = [(int(stego_array[i, j]), int(stego_array[i, j + 1]))
+                  for i in range(height) for j in range(width - 1)]
 
-        for y in range(3, extracted.height - 3):
-            for x in range(3, extracted.width - 3):
-                B_orig = original_array[y, x][2]
-                B_water = watermarked_array[y, x][2]
+    length_bits = [(p1 + p2) // 2 % 2 for p1, p2 in flat_pairs[:32]]
+    message_length = int(''.join(map(str, length_bits)), 2)
+    print("📥 Извлечённая длина сообщения:", message_length)
 
-                # Приводим к типу int32 для избежания переполнения
-                delta = np.int32(B_water) - np.int32(B_orig)
+    if message_length > len(flat_pairs) - 32:
+        print("❌ Ошибка: длина сообщения превышает доступные пары пикселей.")
+        return ""
 
-                # Устанавливаем значение в 255 или 0 в зависимости от delta
-                bit = 255 if delta >= 0 else 0
-                extracted_array[y, x] = bit
+    message_bits = [(p1 + p2) // 2 % 2 for p1, p2 in flat_pairs[32:32 + message_length]]
+    print("🧾 Первые биты:", message_bits[:16], "...")
+    return bits_to_str(message_bits)
 
-        self.extracted_image = Image.fromarray(extracted_array)
-        self.update_view(self.extracted_image, self.extracted_canvas)  
-    def update_view(self, img, canvas):
-        img_resized = resize_image(img)  
-        img_tk = ImageTk.PhotoImage(img_resized)
-        canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
-        canvas.image = img_tk 
-
-def resize_image(image, max_size=(200, 200)):
-    image.thumbnail(max_size, Image.LANCZOS)  
-    return image
-
+# --- Тест с загрузкой изображения ---
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = WatermarkApp(root)
-    root.mainloop()
+    message = "Hello, GPT!213"
+    encoded_bits = encode_message_with_length(message)
+
+    # Загрузка изображения из файла (конвертация в grayscale)
+    image_path = "lab7/src/img_in/1.bmp"
+    img = Image.open(image_path).convert("L")
+    img_array = np.array(img)
+
+    print(f"🖼 Исходное изображение: {img_array.shape}, dtype={img_array.dtype}")
+
+    stego_img = interpolation_method(img_array, encoded_bits)
+    extracted = extract_standard(stego_img)
+
+    print("📨 Извлечённое сообщение:", extracted)
+    print("✅ Совпадает?", message == extracted)
