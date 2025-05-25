@@ -139,14 +139,25 @@ class SteganographyApp:
                 self.stego_image = image_array.copy()  # сохраняем исходное изображение
                 self.file_status.set("Image loaded successfully.")
 
-                # Вместимость без хэша
-                capacity = self.container_image.size // 2
-                capacity_with_hash = self.calculate_capacity_with_hash(self.container_image, block_size=8, hash_bits=1)
-                entropy = self.analyze_bit_distribution(self.container_image)
+                # Вместимость без хэша и длины (но с длиной сообщения в префиксе)
+                length_prefix_bits = 32
+                total_bits = self.container_image.size  # число пикселей (в битах, т.к. 1 бит на пиксель)
 
-                add_after_image_load = f"📊 Вместимость без хэша: {capacity} бит"
-                add_after_image_load += f"\n📊 Вместимость с хэшем: {capacity_with_hash} бит"
-                add_after_image_load+=f"\n📊 Анализ распределения битов (энтропия): {entropy}\n"
+                capacity_bits = total_bits - length_prefix_bits
+                capacity_bits = max(capacity_bits, 0)
+
+                # Вместимость с хэшем (например SHA-256 = 256 бит)
+                hash_bits = 256
+                capacity_with_hash_bits = total_bits - length_prefix_bits - hash_bits
+                capacity_with_hash_bits = max(capacity_with_hash_bits, 0)
+
+                # Перевод в байты (8 бит = 1 байт)
+                capacity_bytes = capacity_bits // 8
+                capacity_with_hash_bytes = capacity_with_hash_bits // 8
+
+                add_after_image_load = f"📊 Вместимость без хэша: {capacity_bytes} байт"
+                add_after_image_load += f"\n📊 Вместимость с хэшем: {capacity_with_hash_bytes} байт"
+
                 self.output_text.delete(1.0, tk.END)  # очистить
                 self.output_text.insert(tk.END, add_after_image_load)
 
@@ -246,11 +257,12 @@ class SteganographyApp:
                 prob_map.append(entropy)
         return np.mean(prob_map)
 
-    def calculate_capacity_with_hash(self, img_array, block_size=8, hash_bits=1):
-        available_bits = img_array.size // 2  # как и без хэша
-        total_block_size = block_size + hash_bits  # например, 8 + 1 = 9
-        max_blocks = available_bits // total_block_size
-        return max_blocks * block_size  # реальная полезная вместимость
+    def calculate_capacity_with_hash(self, image_array, hash_bits=256, length_prefix_bits=32):
+        total_bits = image_array.size  # например, 1 бит на пиксель (в твоём коде container_image.size)
+        capacity_bits = total_bits - hash_bits - length_prefix_bits
+        if capacity_bits < 0:
+            capacity_bits = 0
+        return capacity_bits
 
     # --- Встраивание интерполяцией 
     def interpolation_method(self, img_array, full_message_bits):
@@ -302,14 +314,15 @@ class SteganographyApp:
         if not message:
             messagebox.showerror("Error", "Please enter a message.")
             return
-        print("len embed message: ", len(message))
+        # print("len embed message: ", len(message))
         message_bits = self.str_to_bits(message)
-        full_bits = self.get_full_bits(message_bits)
 
         # -----------------------------------------------------------------
-        print(f"Original message bits length: {len(message_bits)}")
-        print(f"Full bits length (with length prefix): {len(full_bits)}")
+        message_bits_length = len(message_bits)  # где message_bits — строка из '0' и '1' или список битов
+        print(f"Trying to embed bits: {message_bits_length}")
         # -----------------------------------------------------------------
+        full_bits = self.get_full_bits(message_bits)
+
 
         self.stego_image = self.interpolation_method(self.container_image, full_bits) 
         # --- save and notify
@@ -344,6 +357,10 @@ class SteganographyApp:
             return
         extracted_bits = self.extract_bits_form_stego(self.stego_image)
 
+        # ------------------------------------------------------------------------------
+        extracted_bits_length = len(extracted_bits)   # если извлекся текст, умножаем на 8 для бит
+        print(f"Extracted bits length: {extracted_bits_length}")
+        # ------------------------------------------------------------------------------
 
         if use_standard:
             self.extract_standard(extracted_bits)
