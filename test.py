@@ -18,27 +18,45 @@ def bits_to_str(bits):
 def xor_bits(bits, key):
     return [b ^ key[i % len(key)] for i, b in enumerate(bits)]
 
-# --- Хэш-функция (линейная) ---
-def linear_hash(block):
-    return sum(block) % 2
+# --- Линейная хэш-функция: lambda(x) = A * x mod 2 ---
+def generate_random_binary_matrix(m, N, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+    return np.random.randint(0, 2, size=(m, N), dtype=int)
 
-def add_hash_blocks(bits, block_size=8):
+def linear_hash_matrix(block, A):
+    x = np.array(block, dtype=int)
+    result = (A @ x) % 2
+    return result.tolist()
+
+def add_matrix_hash_blocks(bits, block_size=8, A=None):
+    assert A is not None, "Матрица A обязательна"
+    m = A.shape[0]
     hashed = []
-    for i in range(0, len(bits), block_size):
-        block = bits[i:i+block_size]
-        h = linear_hash(block)
-        hashed.extend(block + [h])
-    return hashed
 
-def check_and_extract_hash_blocks(bits, block_size=8):
-    recovered = []
-    for i in range(0, len(bits), block_size + 1):
+    for i in range(0, len(bits), block_size):
         block = bits[i:i+block_size]
         if len(block) < block_size:
             break
-        h = bits[i + block_size]
-        if linear_hash(block) == h:
+        h = linear_hash_matrix(block, A)
+        hashed.extend(block + h)
+
+    return hashed
+
+def check_and_extract_matrix_hash_blocks(bits, block_size=8, A=None):
+    assert A is not None, "Матрица A обязательна"
+    m = A.shape[0]
+    recovered = []
+
+    for i in range(0, len(bits), block_size + m):
+        block = bits[i:i+block_size]
+        h = bits[i+block_size:i+block_size+m]
+        if len(block) < block_size or len(h) < m:
+            break
+        expected_h = linear_hash_matrix(block, A)
+        if h == expected_h:
             recovered.extend(block)
+
     return recovered
 
 # --- Интерполяционное встраивание ---
@@ -116,53 +134,53 @@ def get_full_bits(message_bits):
 
 def extracted_bits_message(extracted_bits):
     extracted_len = int("".join(map(str, extracted_bits[:32])), 2)
-    print("📥 Извлечённая длина:", extracted_len)
+    print("\U0001F4E5 Извлечённая длина:", extracted_len)
     return extracted_bits[32:32 + extracted_len]
 
+def read_text_from_file(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f.read()
+
 if __name__ == "__main__":
-    
-    # Вместимость без хэша
     img = Image.open("lab7/src/img_in/1.bmp").convert("L")
     img_array = np.array(img)
-    capacity = img_array.size // 2
 
-    print("📊 Вместимость без хэша:", capacity)
-    print("📊 Анализ распределения битов (энтропия):", analyze_bit_distribution(img_array))
-
-
-    message = "I am trying to paste text or URL into text blocks or sticky notes and nothing happens. I don’t receive any error message, its just blank.I tried using keyboard shortcut methods. the right click method to copy/paste URLs or text, restarting Miro and resizing the screen to 100% but not successfully. Seems like a bug because I used to be able to do this. Hope it can be fixed soon and please let me know what I can do to make this happen again.321"
+    message = read_text_from_file("lab7/src/texts/example.txt")
     message_bits = str_to_bits(message)
-    # С хэшем
-    key = [1, 0, 1, 1, 0, 1, 0, 0]  # Пример ключа XOR
+    key = [1, 0, 1, 1, 0, 1, 0, 0]
     encrypted_bits = xor_bits(message_bits, key)
-    hashed_bits = add_hash_blocks(encrypted_bits, 8)
-    full_bits = get_full_bits(hashed_bits)
 
-    print("📊 Вместимость с хэшем:", len(full_bits))
-    stego_array = interpolation_method(img_array, full_bits)
-    extracted_bits = extract_standard(stego_array)
+    A = generate_random_binary_matrix(m=4, N=8, seed=42)
+    hashed_bits = add_matrix_hash_blocks(encrypted_bits, block_size=8, A=A)
+    full_bits_hashed = get_full_bits(hashed_bits)
+    full_bits_plain = get_full_bits(encrypted_bits)
 
-    stego_array = interpolation_method(img_array, full_bits)
-    extracted_bits = extract_standard(stego_array)
-
-    raw_encrypted = extracted_bits_message(extracted_bits)
-    recovered_encrypted = check_and_extract_hash_blocks(raw_encrypted, 8)
-    decrypted = xor_bits(recovered_encrypted, key)
-    extracted_msg = bits_to_str(decrypted)
-    print("📨 Оригинальное сообщение:", message[:60])
-    print("📨 Извлечено:", extracted_msg[:60])
-    print("✅ Совпадает?", extracted_msg == message)
-
-
-    # без хэшем
+    # Встраивание с хэшем
+    stego_array_hashed = interpolation_method(img_array.copy(), full_bits_hashed)
     
-    full_bits = get_full_bits(message_bits)
-    stego_array = interpolation_method(img_array, full_bits)
-    extracted_bits = extract_standard(stego_array)
-    extrcted_bit = extracted_bits_message(extracted_bits)
-    extracted_msg = bits_to_str(extrcted_bit)
-    print("📨 Извлечено:", extracted_msg[:60])
-    print("✅ Совпадает?", extracted_msg == message)
+    # Извлечение  с хэшем
+    extracted_bits_hashed = extract_standard(stego_array_hashed)
+    print("\U0001F4CA Вместимость с хэшем (бит):", len(extracted_bits_hashed))
+    raw_encrypted_hashed = extracted_bits_message(extracted_bits_hashed)
+    recovered_encrypted_hashed = check_and_extract_matrix_hash_blocks(raw_encrypted_hashed, block_size=8, A=A)
+    decrypted_hashed = xor_bits(recovered_encrypted_hashed, key)
+    extracted_msg_hashed = bits_to_str(decrypted_hashed)
 
+    # Встраивание без хэша
+    stego_array_plain = interpolation_method(img_array.copy(), full_bits_plain)
+    
+    # Извлечение  без хэшем
+    extracted_bits_plain = extract_standard(stego_array_plain)
+    print("\U0001F4CA Вместимость без хэша (бит):", len(extracted_bits_plain))
+    raw_encrypted_plain = extracted_bits_message(extracted_bits_plain)
+    decrypted_plain = xor_bits(raw_encrypted_plain, key)
 
+    print("\U0001F4E8 Извлечено в битах (с хэшем):", len(decrypted_hashed))
+    print("\U0001F4E8 Извлечено в битах (без хэша):", len(decrypted_plain))
+    extracted_msg_plain = bits_to_str(decrypted_plain)
 
+    print("\U0001F4CA Анализ распределения битов (энтропия):", analyze_bit_distribution(img_array))
+    print("\U0001F4E8 Извлечено (с хэшем):", len(extracted_msg_hashed))
+    print("✅ Совпадает (с хэшем)?", extracted_msg_hashed == message)
+    print("\U0001F4E8 Извлечено (без хэша):", len(extracted_msg_plain))
+    print("✅ Совпадает (без хэша)?", extracted_msg_plain == message)
