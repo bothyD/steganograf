@@ -117,6 +117,7 @@ class SteganographyApp:
             self.container_image = np.array(image)
             self.file_status.set("Image loaded successfully.")
             messagebox.showinfo("Image", "Image loaded successfully.")
+            
 
     def text_to_bits(self, text):
         result = bitarray()
