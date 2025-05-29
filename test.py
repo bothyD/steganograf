@@ -1,113 +1,186 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
 import numpy as np
+from PIL import Image
+from collections import Counter
 
-class WatermarkApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Watermark Application")
-        self.original_image = None
-        self.watermarked_image = None
-        self.extracted_image = None
-        load_button = tk.Button(root, text="Загрузить изображение", command=self.load_image)
-        load_button.pack(pady=10)
-        embed_button = tk.Button(root, text="Внедрить ЦВЗ", command=self.embed_watermark)
-        embed_button.pack(pady=10)
-        extract_button = tk.Button(root, text="Извлечь ЦВЗ", command=self.extract_watermark)
-        extract_button.pack(pady=10)
-        image_frame = tk.Frame(root)
-        image_frame.pack(pady=10)
-        self.original_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.original_canvas.grid(row=0, column=0, padx=10)
-        self.watermarked_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.watermarked_canvas.grid(row=0, column=1, padx=10)
-        self.extracted_canvas = tk.Canvas(image_frame, bg='lightgray', width=200, height=150)
-        self.extracted_canvas.grid(row=0, column=2, padx=10)
+# --- Битовые утилиты ---
+def str_to_bits(s):
+    return [int(b) for c in s for b in format(ord(c), '08b')]
 
-    def load_image(self):
-        file_path = filedialog.askopenfilename(title="Выберите изображение", filetypes=[("Images", "*.bmp *.png *.jpg *.pgm")])
-        if file_path:
-            self.original_image = Image.open(file_path)
-            self.update_view(self.original_image, self.original_canvas)
-    
+def bits_to_str(bits):
+    chars = []
+    for i in range(0, len(bits), 8):
+        byte = bits[i:i+8]
+        if len(byte) < 8:
+            break
+        chars.append(chr(int(''.join(map(str, byte)), 2)))
+    return ''.join(chars)
 
-    def embed_watermark(self):
-        if self.original_image is None:
-            messagebox.showerror("Ошибка", "Сначала загрузите изображение.")
-            return
+def xor_bits(bits, key):
+    return [b ^ key[i % len(key)] for i, b in enumerate(bits)]
 
-        watermark_path = filedialog.askopenfilename(title="Выберите ЦВЗ", filetypes=[("Images", "*.bmp *.png *.jpg *.pgm")])
-        if not watermark_path:
-            return
+# --- Линейная хэш-функция: lambda(x) = A * x mod 2 ---
+def generate_random_binary_matrix(m, N, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+    return np.random.randint(0, 2, size=(m, N), dtype=int)
 
-        watermark = Image.open(watermark_path).convert("RGB")  
-        watermarked = self.original_image.copy()
-        v = 0.15
+def linear_hash_matrix(block, A):
+    x = np.array(block, dtype=int)
+    result = (A @ x) % 2
+    return result.tolist()
 
-        original_array = np.array(watermarked)
-        watermark_array = np.array(watermark)
+def add_matrix_hash_blocks(bits, block_size=8, A=None):
+    assert A is not None, "Матрица A обязательна"
+    m = A.shape[0]
+    hashed = []
 
-        # Проверяем размеры изображений
-        if watermark_array.shape[2] != 3:
-            messagebox.showerror("Ошибка", "Водяной знак должен быть цветным изображением (RGB).")
-            return
+    for i in range(0, len(bits), block_size):
+        block = bits[i:i+block_size]
+        if len(block) < block_size:
+            break
+        h = linear_hash_matrix(block, A)
+        hashed.extend(block + h)
 
-        for y in range(min(watermark_array.shape[0], original_array.shape[0])):
-            for x in range(min(watermark_array.shape[1], original_array.shape[1])):
-                # Убедимся, что мы получаем RGB значения
-                if original_array.ndim == 3 and original_array.shape[2] == 3:
-                    R, G, B = original_array[y, x][:3]
+    return hashed
+
+def check_and_extract_matrix_hash_blocks(bits, block_size=8, A=None):
+    assert A is not None, "Матрица A обязательна"
+    m = A.shape[0]
+    recovered = []
+
+    for i in range(0, len(bits), block_size + m):
+        block = bits[i:i+block_size]
+        h = bits[i+block_size:i+block_size+m]
+        if len(block) < block_size or len(h) < m:
+            break
+        expected_h = linear_hash_matrix(block, A)
+        if h == expected_h:
+            recovered.extend(block)
+
+    return recovered
+
+# --- Интерполяционное встраивание ---
+def interpolation_method(img_array, full_message_bits):
+    height, width = img_array.shape
+    stego_array = img_array.copy()
+    idx = 0
+    total_bits = len(full_message_bits)
+
+    for i in range(height):
+        for j in range(0, width - 1, 2):
+            if idx >= total_bits:
+                return stego_array
+
+            p1 = int(stego_array[i, j])
+            p2 = int(stego_array[i, j + 1])
+            mid = (p1 + p2) // 2
+            desired_bit = full_message_bits[idx]
+
+            current_bit = mid % 2
+            if current_bit != desired_bit:
+                if mid % 2 == 0:
+                    mid += 1
                 else:
-                    messagebox.showerror("Ошибка", "Изображение должно быть цветным (RGB).")
-                    return
+                    mid -= 1
 
-                lambda_ = 0.2989 * R + 0.5866 * G + 0.1145 * B
+                candidates = []
+                for delta1 in range(-4, 5):
+                    for delta2 in range(-4, 5):
+                        np1 = p1 + delta1
+                        np2 = p2 + delta2
+                        if 0 <= np1 <= 255 and 0 <= np2 <= 255 and (np1 + np2) // 2 == mid:
+                            diff = abs(delta1) + abs(delta2)
+                            candidates.append((diff, np1, np2))
 
-                # Извлекаем значение серого из водяного знака
-                bit = 1 if np.mean(watermark_array[y, x]) > 128 else 0
-                newB = B + (2 * bit - 1) * v * lambda_
-                newB = max(0, min(255, int(newB)))  
-                original_array[y, x][2] = newB  
+                if candidates:
+                    _, new_p1, new_p2 = min(candidates)
+                    stego_array[i, j] = new_p1
+                    stego_array[i, j + 1] = new_p2
 
-        self.watermarked_image = Image.fromarray(original_array)
-        self.update_view(self.watermarked_image, self.watermarked_canvas)
+            idx += 1
 
-    def extract_watermark(self):
-        if self.original_image is None or self.watermarked_image is None:
-            messagebox.showerror("Ошибка", "Сначала загрузите изображение и внедрите ЦВЗ.")
-            return
-        extracted = Image.new("L", self.original_image.size)
-        extracted_array = np.zeros((self.original_image.height, self.original_image.width), dtype=np.uint8)  # Создаем массив для извлеченного изображения
+    return stego_array
 
-        original_array = np.array(self.original_image)
-        watermarked_array = np.array(self.watermarked_image)
+# --- Извлечение ---
+def extract_standard(stego_array):
+    height, width = stego_array.shape
+    bits = []
+    for i in range(height):
+        for j in range(0, width - 1, 2):
+            p1 = int(stego_array[i, j])
+            p2 = int(stego_array[i, j + 1])
+            interp = (p1 + p2) // 2
+            bits.append(interp % 2)
+    return bits
 
-        for y in range(3, extracted.height - 3):
-            for x in range(3, extracted.width - 3):
-                B_orig = original_array[y, x][2]
-                B_water = watermarked_array[y, x][2]
+# --- Анализ распределения битов ---
+def analyze_bit_distribution(img_array):
+    height, width = img_array.shape
+    prob_map = []
+    for i in range(0, height, 8):
+        for j in range(0, width, 8):
+            block = img_array[i:i+8, j:j+8].flatten()
+            binarized = [(int(p1) + int(p2)) // 2 % 2 for p1, p2 in zip(block[::2], block[1::2])]
+            count = Counter(binarized)
+            p0 = count.get(0, 0) / len(binarized)
+            p1 = count.get(1, 0) / len(binarized)
+            entropy = -(p0*np.log2(p0 + 1e-10) + p1*np.log2(p1 + 1e-10))
+            prob_map.append(entropy)
+    return np.mean(prob_map)
 
-                # Приводим к типу int32 для избежания переполнения
-                delta = np.int32(B_water) - np.int32(B_orig)
+def get_full_bits(message_bits):
+    length_bits = [int(b) for b in format(len(message_bits), '032b')]
+    return length_bits + message_bits
 
-                # Устанавливаем значение в 255 или 0 в зависимости от delta
-                bit = 255 if delta >= 0 else 0
-                extracted_array[y, x] = bit
+def extracted_bits_message(extracted_bits):
+    extracted_len = int("".join(map(str, extracted_bits[:32])), 2)
+    print("\U0001F4E5 Извлечённая длина:", extracted_len)
+    return extracted_bits[32:32 + extracted_len]
 
-        self.extracted_image = Image.fromarray(extracted_array)
-        self.update_view(self.extracted_image, self.extracted_canvas)  
-    def update_view(self, img, canvas):
-        img_resized = resize_image(img)  
-        img_tk = ImageTk.PhotoImage(img_resized)
-        canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
-        canvas.image = img_tk 
-
-def resize_image(image, max_size=(200, 200)):
-    image.thumbnail(max_size, Image.LANCZOS)  
-    return image
+def read_text_from_file(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f.read()
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = WatermarkApp(root)
-    root.mainloop()
+    img = Image.open("lab7/src/img_in/1.bmp").convert("L")
+    img_array = np.array(img)
+
+    message = read_text_from_file("lab7/src/texts/example.txt")
+    message_bits = str_to_bits(message)
+    key = [1, 0, 1, 1, 0, 1, 0, 0]
+    encrypted_bits = xor_bits(message_bits, key)
+
+    A = generate_random_binary_matrix(m=4, N=8, seed=42)
+    hashed_bits = add_matrix_hash_blocks(encrypted_bits, block_size=8, A=A)
+    full_bits_hashed = get_full_bits(hashed_bits)
+    full_bits_plain = get_full_bits(encrypted_bits)
+
+    # Встраивание с хэшем
+    stego_array_hashed = interpolation_method(img_array.copy(), full_bits_hashed)
+    
+    # Извлечение  с хэшем
+    extracted_bits_hashed = extract_standard(stego_array_hashed)
+    print("\U0001F4CA Вместимость с хэшем (бит):", len(extracted_bits_hashed))
+    raw_encrypted_hashed = extracted_bits_message(extracted_bits_hashed)
+    recovered_encrypted_hashed = check_and_extract_matrix_hash_blocks(raw_encrypted_hashed, block_size=8, A=A)
+    decrypted_hashed = xor_bits(recovered_encrypted_hashed, key)
+    extracted_msg_hashed = bits_to_str(decrypted_hashed)
+
+    # Встраивание без хэша
+    stego_array_plain = interpolation_method(img_array.copy(), full_bits_plain)
+    
+    # Извлечение  без хэшем
+    extracted_bits_plain = extract_standard(stego_array_plain)
+    print("\U0001F4CA Вместимость без хэша (бит):", len(extracted_bits_plain))
+    raw_encrypted_plain = extracted_bits_message(extracted_bits_plain)
+    decrypted_plain = xor_bits(raw_encrypted_plain, key)
+
+    print("\U0001F4E8 Извлечено в битах (с хэшем):", len(decrypted_hashed))
+    print("\U0001F4E8 Извлечено в битах (без хэша):", len(decrypted_plain))
+    extracted_msg_plain = bits_to_str(decrypted_plain)
+
+    print("\U0001F4CA Анализ распределения битов (энтропия):", analyze_bit_distribution(img_array))
+    print("\U0001F4E8 Извлечено (с хэшем):", len(extracted_msg_hashed))
+    print("✅ Совпадает (с хэшем)?", extracted_msg_hashed == message)
+    print("\U0001F4E8 Извлечено (без хэша):", len(extracted_msg_plain))
+    print("✅ Совпадает (без хэша)?", extracted_msg_plain == message)
